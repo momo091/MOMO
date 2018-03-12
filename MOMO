@@ -1,0 +1,68 @@
+#include <opencv2/imgproc/imgproc.hpp>  
+#include <opencv2/core/core.hpp>  
+#include <opencv2/highgui/highgui.hpp>  
+#include <iostream>  
+#include <stdio.h>  
+
+using namespace cv;  
+using namespace std; 
+
+//   opencv 自带的函数API
+/* filter2D(InputArray src,
+    OutputArray dst,
+	InputArray kernel,            kernel：卷积核算子，为单通道浮点矩阵，如果对多通道应用不同卷积核算子计算，需要分离通道然后对其进行单个操作。
+	Point anchor=Point(-1,-1),    anchor：是卷积核锚点，默认是(-1,-1)，表示卷积核中心。
+	double delta=0,               delta：平滑系数。
+	int borderType=BORER_DEFAULT)*/
+
+Mat Myfilter2D(Mat srcImage)  
+{  
+    const int nChannels = srcImage.channels();  
+    Mat resultImage(srcImage.size(), srcImage.type());  
+    for (int j = 1; j < srcImage.rows - 1; ++j)  
+    {  
+        //获取领域指针  
+        const uchar* previous = srcImage.ptr<uchar>(j - 1);  
+        const uchar* current = srcImage.ptr<uchar>(j );  
+        const uchar* next = srcImage.ptr<uchar>(j + 1);  
+        uchar* output = resultImage.ptr<uchar>(j);  
+        for (int i = nChannels; i < nChannels*(srcImage.cols - 1); ++i)  
+        {  
+            //4-领域均值掩码操作  
+			//这里可以看出每一个像素点连续存储nChannels的存储单元
+			//这里怎么去访问不同通道的邻域数据
+			//均值滤波
+            *output++ = saturate_cast<uchar>((current[i - nChannels] + current[i + nChannels] + previous[i] + next[i]) / 4);  
+        }  
+    }  
+    //边界处理  
+    resultImage.row(0).setTo(Scalar(0));  
+    resultImage.row(resultImage.rows - 1).setTo(Scalar(0));  
+    resultImage.col(0).setTo(Scalar(0));  
+    resultImage.col(resultImage.cols - 1).setTo(Scalar(0));  
+    return resultImage;  
+}  
+//自带库掩码操作  
+Mat filter2D_(Mat srcImage)  
+{  
+    Mat resultImage(srcImage.size(), srcImage.type());  
+    Mat kern = (Mat_<float>(3, 3) << 0, 1, 0, 1, 0, 1, 0, 1, 0) / (float)(4);  
+    filter2D(srcImage, resultImage, -1, kern);  
+    return resultImage;  
+}  
+int main()          
+{  
+    Mat srcImage = imread("12.jpg");  
+    if (!srcImage.data)  
+        return -1;  
+    Mat srcGray;  
+  //  cvtColor(srcImage, srcGray, CV_BGR2GRAY);  均值滤波可以是灰度图也可以是彩色图
+	srcImage.copyTo(srcGray);
+    imshow("srcGray", srcGray);  
+    Mat resultImage1 = Myfilter2D(srcGray);  
+    imshow("resultImage1", resultImage1);  
+    Mat resultImage2 = filter2D_(srcGray);  
+    imshow("resultImage2", resultImage2);  
+    waitKey(0);  
+    return 0;  
+}  
